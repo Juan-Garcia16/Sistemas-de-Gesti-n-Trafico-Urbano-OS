@@ -1,4 +1,4 @@
-from backend.core.intersection import Intersection
+from core.intersection import Intersection
 
 class IntersectionNetwork:
     """

@@ -1,4 +1,4 @@
-from backend.core.traffic_light import TrafficLight
+from core.traffic_light import TrafficLight
 
 class Intersection:
     """
