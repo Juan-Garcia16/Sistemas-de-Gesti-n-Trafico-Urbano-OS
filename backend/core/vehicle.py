@@ -5,10 +5,6 @@ from enum import IntEnum
 from config import VEHICLE_MAX_LIFETIME
 from core.scheduler import log_vehicle_move
 
-# --- Concepto de SO: Prioridad de Procesos (Priority Scheduling) ---
-# En los sistemas operativos, el planificador (scheduler) usa niveles de prioridad
-# para decidir qué proceso obtiene la CPU. Los valores más bajos numéricamente
-# suelen inferir la prioridad más alta (como en Unix/Linux).
 class Priority(IntEnum):
     EMERGENCY = 0
     HIGH      = 1
@@ -37,8 +33,9 @@ class Vehicle(threading.Thread):
         self._visited_count = 0
         self.queued_at: str | None = None
         self._dispatched_this_tick = False
-        self._dispatched_at_tick: int = -1  # Bug 3: tick en que fue despachado
-        self._dispatch_seq: int = 0  # Bug 3: secuencia de despacho
+        self._dispatched_at_tick: int = -1
+        self._dispatch_seq: int = 0
+        self._held_light: str | None = None
 
     def run(self):
         """
@@ -46,6 +43,11 @@ class Vehicle(threading.Thread):
         El vehículo camina aleatoriamente por la red hasta alcanzar su lifetime máximo.
         """
         while self._visited_count < _MAX_LIFETIME:
+            if self._held_light is not None and self._held_light != self.current_intersection:
+                old_light = self.network.nodes[self._held_light].light
+                old_light.release()
+                self._held_light = None
+
             neighbors = self.network.get_neighbors(self.current_intersection)
 
             if not neighbors:
@@ -55,23 +57,53 @@ class Vehicle(threading.Thread):
             next_id = next_inter.id
 
             self.status = "WAITING"
-            self._dispatched_this_tick = False  # Resetear al encolar
-            self.queued_at = self.current_intersection  # Bug 4: guardar posición ACTUAL, no destino
+            self._dispatched_this_tick = False
+            self.queued_at = self.current_intersection
             self.scheduler.enqueue(self, next_id)
-            self.scheduler.wait_for_dispatch(self.vehicle_id)  # Block 1: Permission granted
+            self.scheduler.wait_for_dispatch(self.vehicle_id)
 
-            # Mandatory 1-tick delay - wait until tick advances
+            dest_light = self.network.nodes[next_id].light
+            acquired = dest_light.acquire(self.vehicle_id, timeout=5.0)
+
+            if not acquired:
+                self.status = "WAITING"
+                self._dispatched_this_tick = False
+                self.queued_at = self.current_intersection
+                self.scheduler.enqueue(self, self.current_intersection)
+                self.scheduler.wait_for_dispatch(self.vehicle_id)
+                continue
+
+            self._held_light = next_id
+
             tick_at_wake = self.scheduler._current_tick
             while self.scheduler._current_tick == tick_at_wake:
-                time.sleep(0.05)  # Polling until tick advances
-            # Tick has advanced to N+1, proceed to wait for dispatch permission
+                # Si ocurre una interrupción por fallo en la intersección que estamos cruzando,
+                # el proceso guarda su estado (cambia a WAITING) y se bloquea temporalmente.
+                if dest_light.state == "FAULT":
+                    self.status = "WAITING"
+                    while dest_light.state == "FAULT":
+                        time.sleep(0.1)
+                    # Al levantarse la interrupción (restore()), el planificador reanuda el proceso.
+                    self.status = "MOVING"
+                time.sleep(0.05)
+
+            # Comprobar estado de fallo justo antes de la transición de posición
+            if dest_light.state == "FAULT":
+                self.status = "WAITING"
+                while dest_light.state == "FAULT":
+                    time.sleep(0.1)
 
             prev_inter = self.current_intersection
             self.status = "MOVING"
             self.current_intersection = next_id
             self._visited_count += 1
-            self._dispatched_this_tick = True  # Bug 3: marcar como ya despachado este tick
-            # Log movimiento para diagnóstico Bug 3
+            self._dispatched_this_tick = True
             log_vehicle_move(self.vehicle_id, prev_inter, next_id, self._dispatched_at_tick, self._dispatch_seq)
+
+        if self._held_light is not None:
+            try:
+                self.network.nodes[self._held_light].light.release()
+            except Exception:
+                pass
 
         self.status = "DONE"

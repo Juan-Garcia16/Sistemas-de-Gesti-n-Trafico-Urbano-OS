@@ -58,6 +58,22 @@ export function ControlPanel({ intersections, simulationRunning, onSimulationCha
     try { await api.runScenario(scenario); } catch (e) { console.error(e); }
   };
 
+  // Ordenar intersecciones por coordenada y (filas) y luego x (columnas) para corregir el orden de la matriz transpuesta
+  const getCoords = (i) => {
+    if (i.position) return i.position;
+    const parts = i.id.split("_");
+    return { x: parseInt(parts[1]) || 0, y: parseInt(parts[2]) || 0 };
+  };
+
+  const sortedIntersections = [...intersections].sort((a, b) => {
+    const posA = getCoords(a);
+    const posB = getCoords(b);
+    if (posA.y !== posB.y) {
+      return posA.y - posB.y;
+    }
+    return posA.x - posB.x;
+  });
+
   return (
     <div className="bg-gray-800 rounded-lg text-white w-80 shrink-0">
       {/* Tab header */}
@@ -172,12 +188,22 @@ export function ControlPanel({ intersections, simulationRunning, onSimulationCha
             <div className="border-t border-gray-700 pt-3">
               <p className="text-xs text-gray-500 mb-2">Simular fallo manual:</p>
               <div className="grid grid-cols-3 gap-1.5">
-                {intersections.map(i => (
-                  <button key={i.id} onClick={() => handleTriggerFault(i.id)}
-                    className="px-2 py-1.5 bg-red-600/40 hover:bg-red-600 rounded text-xs">
-                    {i.id.split("_").slice(1).join(",")}
-                  </button>
-                ))}
+                {sortedIntersections.map(i => {
+                  const isFaulty = i.state === "FAULT";
+                  return (
+                    <button
+                      key={i.id}
+                      onClick={() => handleTriggerFault(i.id)}
+                      className={`px-2 py-1.5 rounded text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                        isFaulty
+                          ? "bg-red-600 text-white shadow-lg shadow-red-900/50 animate-pulse border border-red-400"
+                          : "bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-200 border border-red-900/30"
+                      }`}
+                    >
+                      {isFaulty ? "⚠️" : "🔴"} {i.id.split("_").slice(1).join(",")}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
