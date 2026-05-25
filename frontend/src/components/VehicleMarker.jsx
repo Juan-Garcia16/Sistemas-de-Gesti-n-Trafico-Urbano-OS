@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 
 const vehicleConfig = {
   EMERGENCY: { body: "#DC2626", roof: "#EF4444", width: 26, height: 14 },
@@ -14,15 +14,10 @@ function CarSVG({ config }) {
   const roofH = h * 0.35;
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {/* Body */}
       <rect x={r * 0.6} y={h * 0.15} width={w - r * 1.2} height={h * 0.65} rx={r} fill={config.body} />
-      {/* Roof */}
       <rect x={w * 0.3} y={0} width={roofW} height={roofH} rx="2" fill={config.roof} />
-      {/* Left wheel */}
       <circle cx={w * 0.25} cy={h * 0.78} r={r * 0.5} fill="#1F2937" />
-      {/* Right wheel */}
       <circle cx={w * 0.75} cy={h * 0.78} r={r * 0.5} fill="#1F2937" />
-      {/* Emergency cross for EMERGENCY vehicles */}
       {config === vehicleConfig.EMERGENCY && (
         <g transform={`translate(${w * 0.48}, ${h * 0.4})`}>
           <rect x="-3" y="-1" width="6" height="2" fill="white" rx="0.5" />
@@ -34,21 +29,23 @@ function CarSVG({ config }) {
 }
 
 export function VehicleMarker({ id, status, priority, currentPosition, cellSize = 80 }) {
-  const prevPos = useRef(currentPosition);
+  const prevPosRef = useRef(null);
 
-  useEffect(() => {
-    prevPos.current = currentPosition;
-  }, [currentPosition]);
+  if (prevPosRef.current === null) {
+    prevPosRef.current = currentPosition;
+  }
+
+  const prev = prevPosRef.current;
+  const dx = currentPosition.x - prev.x;
+  const dy = currentPosition.y - prev.y;
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+  prevPosRef.current = currentPosition;
 
   if (status === "DONE") return null;
 
   const cfg = vehicleConfig[priority] || vehicleConfig.NORMAL;
-  const prev = prevPos.current || currentPosition;
   const halfCell = cellSize / 2;
-
-  const dx = currentPosition.x - prev.x;
-  const dy = currentPosition.y - prev.y;
-  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
   return (
     <div

@@ -34,9 +34,8 @@ router = APIRouter(prefix="/simulation", tags=["Simulation"])
 
 
 class AddVehicleRequest(BaseModel):
-    """Modelo para el body de POST /simulation/vehicle"""
     id: str
-    route: list
+    start_intersection: str
     priority: str
 
 
@@ -278,27 +277,21 @@ def run_scenario(request: ScenarioRequest, user=Depends(require_role("control"))
     vehicles_added = []
 
     if scenario == "mutex_demo":
-        # 3 vehículos normales → intersection_1_1
-        route = ["intersection_0_0", "intersection_1_0", "intersection_1_1"]
-        for i in range(3):
+        starts = ["intersection_0_0", "intersection_2_0", "intersection_0_2"]
+        for i, start in enumerate(starts):
             vid = f"mutex-car-{i+1}"
-            engine.add_vehicle(vid, route.copy(), Priority.NORMAL)
+            engine.add_vehicle(vid, start, Priority.NORMAL)
             vehicles_added.append(vid)
 
     elif scenario == "priority_demo":
-        # 2 normales primero, luego 1 ambulancia → ambulancia debe pasar primero
-        route = ["intersection_0_0", "intersection_0_1", "intersection_0_2"]
-        engine.add_vehicle("normal-1", route.copy(), Priority.NORMAL)
-        engine.add_vehicle("normal-2", route.copy(), Priority.NORMAL)
-        engine.add_vehicle("ambulancia-prio", route.copy(), Priority.EMERGENCY)
+        engine.add_vehicle("normal-1", "intersection_0_0", Priority.NORMAL)
+        engine.add_vehicle("normal-2", "intersection_0_0", Priority.NORMAL)
+        engine.add_vehicle("ambulancia-prio", "intersection_0_0", Priority.EMERGENCY)
         vehicles_added = ["normal-1", "normal-2", "ambulancia-prio"]
 
     elif scenario == "deadlock_demo":
-        # Dos vehículos con rutas que se cruzan → deadlock
-        route_a = ["intersection_0_0", "intersection_1_0", "intersection_1_1", "intersection_1_2"]
-        route_b = ["intersection_1_1", "intersection_1_0", "intersection_0_0", "intersection_0_1"]
-        engine.add_vehicle("deadlock-A", route_a, Priority.NORMAL)
-        engine.add_vehicle("deadlock-B", route_b, Priority.NORMAL)
+        engine.add_vehicle("deadlock-A", "intersection_0_0", Priority.NORMAL)
+        engine.add_vehicle("deadlock-B", "intersection_1_2", Priority.NORMAL)
         vehicles_added = ["deadlock-A", "deadlock-B"]
 
     else:
@@ -332,6 +325,6 @@ def add_vehicle(request: AddVehicleRequest, user=Depends(require_role("control")
     else:
         p = Priority.NORMAL
 
-    engine.add_vehicle(request.id, request.route, p)
+    engine.add_vehicle(request.id, request.start_intersection, p)
 
     return {"status": "vehicle_added", "vehicle_id": request.id}
