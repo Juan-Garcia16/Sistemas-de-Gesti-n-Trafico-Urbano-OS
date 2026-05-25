@@ -29,9 +29,9 @@ class Settings(BaseModel):
     TRAFFIC_LIGHT_YELLOW_DURATION: int = 1
 
     # Vehículos
-    VEHICLE_SPAWN_INTERVAL: int = 3
-    VEHICLE_MAX_FLEET: int = 4
-    VEHICLE_MAX_LIFETIME: int = 15
+    VEHICLE_SPAWN_INTERVAL: int = 10
+    VEHICLE_MAX_FLEET: int = 10
+    VEHICLE_MAX_LIFETIME: int = 5
 
     # Scheduler
     MAX_DISPATCH_PER_INTERSECTION_PER_TICK: int = 1

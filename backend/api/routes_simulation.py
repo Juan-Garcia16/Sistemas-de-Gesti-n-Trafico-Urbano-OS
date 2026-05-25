@@ -277,16 +277,15 @@ def run_scenario(request: ScenarioRequest, user=Depends(require_role("control"))
     vehicles_added = []
 
     if scenario == "mutex_demo":
-        starts = ["intersection_0_0", "intersection_2_0", "intersection_0_2"]
-        for i, start in enumerate(starts):
+        for i in range(3):
             vid = f"mutex-car-{i+1}"
-            engine.add_vehicle(vid, start, Priority.NORMAL)
+            engine.add_vehicle(vid, "intersection_1_1", Priority.NORMAL)
             vehicles_added.append(vid)
 
     elif scenario == "priority_demo":
-        engine.add_vehicle("normal-1", "intersection_0_0", Priority.NORMAL)
-        engine.add_vehicle("normal-2", "intersection_0_0", Priority.NORMAL)
-        engine.add_vehicle("ambulancia-prio", "intersection_0_0", Priority.EMERGENCY)
+        engine.add_vehicle("normal-1", "intersection_1_1", Priority.NORMAL)
+        engine.add_vehicle("normal-2", "intersection_1_1", Priority.NORMAL)
+        engine.add_vehicle("ambulancia-prio", "intersection_1_1", Priority.EMERGENCY)
         vehicles_added = ["normal-1", "normal-2", "ambulancia-prio"]
 
     elif scenario == "deadlock_demo":

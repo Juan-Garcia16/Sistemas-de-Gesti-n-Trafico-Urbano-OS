@@ -48,9 +48,10 @@ export function ControlPanel({ intersections, simulationRunning, onSimulationCha
 
   const handleAddVehicle = async (priority) => {
     try {
-      const route = intersections.slice(0, 3).map(i => i.id);
+      const randomIdx = Math.floor(Math.random() * intersections.length);
+      const startIntersection = intersections[randomIdx]?.id || "intersection_0_0";
       const prefix = priority === "EMERGENCY" ? "emergency" : "car";
-      await api.addVehicle(`${prefix}-${Date.now()}`, route, priority);
+      await api.addVehicle(`${prefix}-${Date.now()}`, startIntersection, priority);
     } catch (err) { console.error(err); }
   };
 
